@@ -1,0 +1,30 @@
+LVTHN-CODEC — Patent Notice
+
+This software is released under the MIT License.
+
+The author is not aware of any patents that cover the algorithms implemented 
+here. The core techniques used are:
+
+Audio:
+  - MDCT / IMDCT with sine window (Princen-Bradley, 1986–87; expired)
+  - TDAC (Time-Domain Aliasing Cancellation, 1986; expired)
+  - Mid/Side stereo coding (Blumlein, 1930s; classic technique)
+  - Bark-scale band partitioning (Barkhausen 1960s, public domain)
+  - Absolute Threshold of Hearing (Terhardt 1979, public domain)
+  - Rice coding (Golomb 1966, Rice 1979; expired)
+  - Adaptive per-band quantization (basic idea, expired)
+
+Images:
+  - Oklab color space (Björn Ottosson, 2020; public domain)
+  - Block DCT (discrete cosine transform; expired)
+  - Run-Length Encoding (RLE; public domain)
+  - Zstandard compression (Yann Collet, 2015; BSD/GPLv2, patent-free)
+
+This is NOT a legal guarantee of patent non-infringement. No warranty is
+provided. If you distribute binaries based on this code commercially,
+consult a patent attorney about your jurisdiction.
+
+The author has intentionally avoided:
+  - Full psychoacoustic masking models identical to MP3/AAC
+  - SBR / PS / HE-AAC extensions
+  - Any code from FFmpeg, LAME, Opus, Vorbis, or other existing codecs
