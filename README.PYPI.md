@@ -16,26 +16,26 @@ You can import the codec directly into your Python projects.
 
 ```python
 import numpy as np
-import codec
+import lvthn
 
 # --- Audio Example ---
 # 1. Read a WAV file
-pcm, sr = codec.read_wav("track.wav")
+pcm, sr = lvthn.read_wav("track.wav")
 
 # 2. Encode to LVN
 # Arguments: pcm_array, sample_rate, channels, delta, target_snr_db
-lvn_data = codec.encode_pcm(pcm, sr, pcm.shape[1], 0.18, 24.0)
+lvn_data = lvthn.encode_pcm(pcm, sr, pcm.shape[1], 0.18, 24.0)
 
 # 3. Decode back to PCM
-out_pcm, out_sr, out_ch, n_samples = codec.decode_lvn(lvn_data)
+out_pcm, out_sr, out_ch, n_samples = lvthn.decode_lvn(lvn_data)
 
 # 4. Write to WAV
-codec.write_wav("restored.wav", out_pcm, out_sr)
+lvthn.write_wav("restored.wav", out_pcm, out_sr)
 
 
 # --- Image Example ---
 from PIL import Image
-from core import container, image
+from lvthn.core import container, image
 
 # 1. Read an image
 pixels = np.array(Image.open("image.png"))
@@ -50,28 +50,23 @@ restored_pixels = image.decode_image(payload)
 
 ## Usage from the Command Line (CLI)
 
-The package includes a CLI tool. You can use it via `python -m codec` or (starting from v1.0.1) via the `lvthn` command.
+The package includes a CLI tool accessible via the `lvthn` command.
 
-### Using `python -m codec`
 ```bash
 # Encode audio
-python -m codec encode track.wav track.lvn compact
+lvthn encode track.wav track.lvn compact
 
 # Decode audio
-python -m codec decode track.lvn out.wav
+lvthn decode track.lvn out.wav
 
 # Encode image
-python -m codec encode-img image.png image.lvn fast
+lvthn encode-img image.png image.lvn fast
 
 # Decode image
-python -m codec decode-img image.lvn out.png
-```
+lvthn decode-img image.lvn out.png
 
-### Using `lvthn` (Available in v1.0.1+)
-```bash
-lvthn encode track.wav track.lvn
-lvthn decode track.lvn out.wav
-lvthn encode-img image.png image.lvn max
+# Get file info
+lvthn info track.lvn
 ```
 
 ## Profiles
@@ -95,7 +90,6 @@ lvthn encode-img image.png image.lvn max
 ## Links
 
 *   [GitHub Repository](https://github.com/FreshLend/LVTHN-CODEC)
-*   [GUI Player and Benchmark Tools](https://github.com/FreshLend/LVTHN-CODEC)
 
 ## License
 

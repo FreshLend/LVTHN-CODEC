@@ -5,11 +5,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-from codec import (
+from lvthn import (
     PROFILES, IMG_PROFILES, decode_lvn, encode_pcm, read_wav, write_wav, 
     read_image, write_image
 )
-from core import container, image
+from lvthn.core import container, image
 
 AUDIO_EXTS = ('.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.opus', '.wma')
 IMAGE_EXTS = ('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.tiff', '.tif')

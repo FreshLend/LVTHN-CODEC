@@ -18,25 +18,25 @@
 Убедитесь, что у вас установлен Python 3.10+.
 
 ```bash
-pip install numpy scipy numba zstandard Pillow sounddevice PySide6
+pip install lvthn-codec sounddevice PySide6
 ```
 *(Примечание: Для работы `converter.py` с форматами вроде MP3 или JPG необходимо установить `ffmpeg` и добавить его в системную переменную PATH).*
 
 ## Использование
 
-### 1. CLI кодек (`codec.py`)
-Прямое кодирование и декодирование в/из формата `.lvn`.
+### 1. CLI кодек
+Прямое кодирование и декодирование с помощью установленной команды `lvthn`.
 ```bash
 # Аудио
-python codec.py encode track.wav track.lvn compact
-python codec.py decode track.lvn out.wav
+lvthn encode track.wav track.lvn compact
+lvthn decode track.lvn out.wav
 
 # Изображения
-python codec.py encode-img image.png image.lvn fast
-python codec.py decode-img image.lvn out.png
+lvthn encode-img image.png image.lvn fast
+lvthn decode-img image.lvn out.png
 
 # Информация о файле
-python codec.py info track.lvn
+lvthn info track.lvn
 ```
 
 ### 2. Конвертер (`converter.py`)
@@ -95,10 +95,10 @@ python benchmark.py --audio audio.wav --image image.png --image-profiles fast ma
 
 ## Архитектура
 
-*   `codec.py` - Основной CLI и API.
-*   `core/container.py` - Универсальная обёртка LVTHN.
-*   `core/audio.py` - Математика аудио (MDCT, Bark, Psy).
-*   `core/image.py` - Математика изображений (Oklab, DCT).
+*   `lvthn/codec.py` - Основной CLI и API.
+*   `lvthn/core/container.py` - Универсальная обёртка LVTHN.
+*   `lvthn/core/audio.py` - Математика аудио (MDCT, Bark, Psy).
+*   `lvthn/core/image.py` - Математика изображений (Oklab, DCT).
 *   `player.py` - Графический интерфейс (PySide6).
 *   `converter.py` - Обёртка над FFmpeg.
 *   `benchmark.py` - Инструмент тестирования производительности.

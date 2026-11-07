@@ -9,8 +9,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer, QRectF
 from PySide6.QtGui import QImage, QPixmap, QPainter
 
-from codec import decode_lvn
-from core import container
+from lvthn import decode_lvn
+from lvthn.core import container
 
 class ImageViewer(QGraphicsView):
     def __init__(self, pixels):
@@ -39,7 +39,6 @@ class ImageViewer(QGraphicsView):
         self.setResizeAnchor(QGraphicsView.AnchorViewCenter)
         self.setBackgroundBrush(Qt.black)
         
-        # Отключаем ползунки прокрутки
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         

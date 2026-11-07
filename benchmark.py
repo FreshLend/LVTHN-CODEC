@@ -5,8 +5,8 @@ import argparse
 import numpy as np
 from PIL import Image
 
-from core import container, audio, image
-import codec
+from lvthn.core import container, audio, image
+import lvthn
 
 def _snr(ref, got):
     err = ref - got
@@ -19,7 +19,7 @@ def _psnr(ref, got):
 
 def _bench_audio(path, profile_name):
     try:
-        pcm, sr = codec.read_wav(path)
+        pcm, sr = lvthn.read_wav(path)
     except Exception as e:
         print(f"  [!] Error reading {path}: {e}")
         return None
@@ -27,8 +27,8 @@ def _bench_audio(path, profile_name):
     dur = pcm.shape[0] / sr
     raw_bytes = pcm.size * 2
     
-    delta = codec.PROFILES[profile_name]['delta']
-    tsnr = codec.PROFILES[profile_name]['snr']
+    delta = lvthn.PROFILES[profile_name]['delta']
+    tsnr = lvthn.PROFILES[profile_name]['snr']
 
     t0 = time.time()
     payload = audio.encode_audio(pcm, sr, pcm.shape[1], delta, tsnr)
@@ -36,7 +36,7 @@ def _bench_audio(path, profile_name):
     t_enc = time.time() - t0
 
     t0 = time.time()
-    out_pcm, _, _, n2 = codec.decode_lvn(data)
+    out_pcm, _, _, n2 = lvthn.decode_lvn(data)
     t_dec = time.time() - t0
 
     hop = audio.HOP
@@ -75,8 +75,8 @@ def _bench_image(path, profile_name):
     h, w = pixels.shape[:2]
     mp = (h * w) / 1_000_000
     
-    q = codec.IMG_PROFILES[profile_name]['quality']
-    lvl = codec.IMG_PROFILES[profile_name]['level']
+    q = lvthn.IMG_PROFILES[profile_name]['quality']
+    lvl = lvthn.IMG_PROFILES[profile_name]['level']
 
     t0 = time.time()
     payload = image.encode_image(pixels, w, h, ch, q, lvl)
@@ -84,7 +84,7 @@ def _bench_image(path, profile_name):
     t_enc = time.time() - t0
 
     t0 = time.time()
-    out_pixels = codec.decode_lvn(data)
+    out_pixels = lvthn.decode_lvn(data)
     t_dec = time.time() - t0
 
     psnr = _psnr(pixels, out_pixels)
@@ -126,9 +126,9 @@ def main():
     parser.add_argument('--image', nargs='+', default=None, help='Image files or folders (png/jpg)')
     
     parser.add_argument('--audio-profiles', nargs='+', default=['default', 'compact'], 
-                        choices=list(codec.PROFILES.keys()), help='Audio profiles to test')
+                        choices=list(lvthn.PROFILES.keys()), help='Audio profiles to test')
     parser.add_argument('--image-profiles', nargs='+', default=['fast', 'default', 'max'],
-                        choices=list(codec.IMG_PROFILES.keys()), help='Image profiles to test')
+                        choices=list(lvthn.IMG_PROFILES.keys()), help='Image profiles to test')
     
     args = parser.parse_args()
 
@@ -140,7 +140,6 @@ def main():
     print(" LVTHN-CODEC BENCHMARK")
     print("=" * 80)
 
-    # --- AUDIO BENCHMARK ---
     if args.audio:
         audio_files = _resolve_files(args.audio, ('.wav',))
         if not audio_files:
@@ -156,7 +155,6 @@ def main():
                     if res:
                         print(f"{res['name']:<20} | {res['profile']:<10} | {res['dur']:>5.0f}s | {res['kbps']:>5.0f}k | {res['snr']:>5.1f}dB | {res['rtf_enc']:>8.3f} | {res['rtf_dec']:>8.3f} | {res['ratio']:.1f}x")
 
-    # --- IMAGE BENCHMARK ---
     if args.image:
         image_files = _resolve_files(args.image, ('.png', '.jpg', '.jpeg'))
         if not image_files:

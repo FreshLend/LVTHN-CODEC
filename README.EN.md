@@ -18,25 +18,25 @@ It uses a universal container (`.lvn`) that supports both **Audio** and **Images
 Ensure you have Python 3.10+ installed.
 
 ```bash
-pip install numpy scipy numba zstandard Pillow sounddevice PySide6
+pip install lvthn-codec sounddevice PySide6
 ```
 *(Note: For `converter.py` to work with formats like MP3 or JPG, you need to install `ffmpeg` and add it to the system PATH environment variable).*
 
 ## Usage
 
-### 1. Codec CLI (`codec.py`)
-Direct encoding and decoding to and from the `.lvn` format.
+### 1. Codec CLI
+Direct encoding and decoding using the installed `lvthn` command.
 ```bash
 # Audio
-python codec.py encode track.wav track.lvn compact
-python codec.py decode track.lvn out.wav
+lvthn encode track.wav track.lvn compact
+lvthn decode track.lvn out.wav
 
 # Images
-python codec.py encode-img image.png image.lvn fast
-python codec.py decode-img image.lvn out.png
+lvthn encode-img image.png image.lvn fast
+lvthn decode-img image.lvn out.png
 
 # File info
-python codec.py info track.lvn
+lvthn info track.lvn
 ```
 
 ### 2. Converter (`converter.py`)
@@ -95,10 +95,10 @@ python benchmark.py --audio audio.wav --image image.png --image-profiles fast ma
 
 ## Architecture
 
-*   `codec.py` - Main CLI and API.
-*   `core/container.py` - Universal LVTHN wrapper.
-*   `core/audio.py` - Audio math (MDCT, Bark, Psy).
-*   `core/image.py` - Image math (Oklab, DCT).
+*   `lvthn/codec.py` - Main CLI and API.
+*   `lvthn/core/container.py` - Universal LVTHN wrapper.
+*   `lvthn/core/audio.py` - Audio math (MDCT, Bark, Psy).
+*   `lvthn/core/image.py` - Image math (Oklab, DCT).
 *   `player.py` - GUI (PySide6).
 *   `converter.py` - FFmpeg wrapper.
 *   `benchmark.py` - Performance testing tool.
