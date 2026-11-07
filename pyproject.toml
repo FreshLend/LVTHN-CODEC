@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lvthn-codec"
-version = "1.0.0"
+version = "1.0.1"
 description = "Universal LVTHN media codec: audio (MDCT + Bark + Psy) and images (Oklab + DCT + zstd)"
-readme = "README.EN.md"
+readme = "README.PYPI.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE", "PATENTS"]
@@ -27,8 +27,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Topic :: Multimedia :: Sound/Audio :: Codecs",
-    "Topic :: Multimedia :: Graphics :: Codecs",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Multimedia :: Graphics",
 ]
 dependencies = [
     "numpy==2.2.6",
@@ -37,6 +37,9 @@ dependencies = [
     "zstandard==0.25.0",
     "Pillow==12.3.0",
 ]
+
+[project.scripts]
+lvthn = "codec:main"
 
 [tool.setuptools]
 py-modules = ["codec"]
