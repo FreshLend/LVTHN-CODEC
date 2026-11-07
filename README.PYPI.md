@@ -69,6 +69,22 @@ lvthn decode-img image.lvn out.png
 lvthn info track.lvn
 ```
 
+## Performance
+
+### Audio (acoustic track, 179 sec)
+| Profile | Bitrate | SNR | Enc RTF | Dec RTF |
+|---|---|---|---|---|
+| `compact` | 113 kbps | 27.5 dB | 0.013 | 0.009 |
+| `default` | 127 kbps | 29.4 dB | 0.012 | 0.009 |
+| `master` | 225 kbps | 40.8 dB | 0.014 | 0.010 |
+
+### Images (4K 8.29 MP)
+| Profile | PSNR | Enc Time | Dec Time | Compression |
+|---|---|---|---|---|
+| `fast` | 42.1 dB | 1.15s | 1.03s | 9.8x |
+| `default` | 44.7 dB | 1.72s | 0.86s | 8.3x |
+| `max` | 48.3 dB | 8.33s | 0.99s | 4.7x |
+
 ## Profiles
 
 ### Audio Profiles

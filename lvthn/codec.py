@@ -20,9 +20,11 @@ IMG_PROFILES = {
     'max':     {'quality': 98, 'level': 19},
 }
 
+
 def encode_pcm(pcm, sr, ch, delta, target_snr_db):
     payload = audio.encode_audio(pcm, sr, ch, delta, target_snr_db)
     return container.wrap(container.MEDIA_AUDIO, payload)
+
 
 def decode_lvn(data):
     media_type, payload = container.unwrap(data)
@@ -32,6 +34,7 @@ def decode_lvn(data):
         return image.decode_image(payload)
     else:
         raise ValueError(f'Unsupported media_type: 0x{media_type:02x}')
+
 
 def decode_lvn_info(data):
     media_type, payload = container.unwrap(data)
@@ -47,17 +50,25 @@ def decode_lvn_info(data):
         return info
     return dict(media_type=media_type, total=len(data))
 
+
 def read_wav(path):
     sr, d = wavfile.read(path)
-    if d.dtype == np.int16:   d = d.astype(np.float64) / 32768.0
-    elif d.dtype == np.int32: d = d.astype(np.float64) / 2147483648.0
-    elif d.dtype == np.uint8: d = (d.astype(np.float64) - 128.0) / 128.0
-    else:                     d = d.astype(np.float64)
-    if d.ndim == 1: d = d[:, None]
+    if d.dtype == np.int16:
+        d = d.astype(np.float64) / 32768.0
+    elif d.dtype == np.int32:
+        d = d.astype(np.float64) / 2147483648.0
+    elif d.dtype == np.uint8:
+        d = (d.astype(np.float64) - 128.0) / 128.0
+    else:
+        d = d.astype(np.float64)
+    if d.ndim == 1:
+        d = d[:, None]
     return d, sr
+
 
 def write_wav(path, pcm, sr):
     wavfile.write(path, sr, np.clip(pcm * 32767, -32768, 32767).astype(np.int16))
+
 
 def read_image(path):
     from PIL import Image
@@ -67,10 +78,12 @@ def read_image(path):
     else:
         return np.array(img.convert('RGB')), 3
 
+
 def write_image(path, pixels, channels):
     from PIL import Image
     img = Image.fromarray(pixels)
     img.save(path)
+
 
 def main():
     if len(sys.argv) < 2:
@@ -80,7 +93,8 @@ def main():
     cmd, args = sys.argv[1], sys.argv[2:]
 
     if cmd == 'encode':
-        if len(args) < 2: sys.exit('usage: encode in.wav out.lvn [profile|delta] [target_snr_db]')
+        if len(args) < 2:
+            sys.exit('usage: encode in.wav out.lvn [profile|delta] [target_snr_db]')
         pcm, sr = read_wav(args[0])
         arg2 = args[2] if len(args) > 2 else 'default'
         if arg2 in PROFILES:
@@ -90,20 +104,22 @@ def main():
         else:
             delta = float(arg2)
             tsnr = float(args[3]) if len(args) > 3 else 24.0
-        
+
         t0 = time.time()
         data = encode_pcm(pcm, sr, pcm.shape[1], delta, target_snr_db=tsnr)
         Path(args[1]).write_bytes(data)
         print(f'OK {args[1]}  {len(data)} bytes  ({pcm.size * 2 / len(data):.2f}x vs PCM)  encode={time.time() - t0:.2f}s')
 
     elif cmd == 'decode':
-        if len(args) < 2: sys.exit('usage: decode in.lvn out.wav')
+        if len(args) < 2:
+            sys.exit('usage: decode in.lvn out.wav')
         pcm, sr, ch, n = decode_lvn(Path(args[0]).read_bytes())
         write_wav(args[1], pcm, sr)
         print(f'OK {args[1]}  {n} samples, {ch} ch, {sr} Hz')
 
     elif cmd == 'encode-img':
-        if len(args) < 2: sys.exit('usage: encode-img in.png out.lvn [profile|quality] [level]')
+        if len(args) < 2:
+            sys.exit('usage: encode-img in.png out.lvn [profile|quality] [level]')
         pixels, ch = read_image(args[0])
         arg2 = args[2] if len(args) > 2 else 'default'
         if arg2 in IMG_PROFILES:
@@ -113,7 +129,7 @@ def main():
         else:
             q = int(arg2)
             lvl = int(args[3]) if len(args) > 3 else 19
-            
+
         t0 = time.time()
         payload = image.encode_image(pixels, pixels.shape[1], pixels.shape[0], ch, q, lvl)
         data = container.wrap(container.MEDIA_IMAGE, payload)
@@ -121,15 +137,18 @@ def main():
         print(f'OK {args[1]}  {len(data)} bytes  encode={time.time() - t0:.2f}s')
 
     elif cmd == 'decode-img':
-        if len(args) < 2: sys.exit('usage: decode-img in.lvn out.png')
+        if len(args) < 2:
+            sys.exit('usage: decode-img in.lvn out.png')
         mt, payload = container.unwrap(Path(args[0]).read_bytes())
-        if mt != container.MEDIA_IMAGE: sys.exit('Not an image')
+        if mt != container.MEDIA_IMAGE:
+            sys.exit('Not an image')
         pixels = image.decode_image(payload)
         write_image(args[1], pixels, pixels.shape[2] if len(pixels.shape) > 2 else 1)
         print(f'OK {args[1]}')
 
     elif cmd == 'info':
-        if not args: sys.exit('usage: info file.lvn')
+        if not args:
+            sys.exit('usage: info file.lvn')
         info = decode_lvn_info(Path(args[0]).read_bytes())
         if info['media_type'] == container.MEDIA_AUDIO:
             print(f"LVTHN v1  audio  {info['sr']} Hz  {info['ch']} ch  {info['n_samples'] / info['sr']:.2f}s  delta={info['delta']:.4f}")
@@ -144,6 +163,7 @@ def main():
         print('Image profiles:')
         for name, p in IMG_PROFILES.items():
             print(f'  {name:10s}  quality={p["quality"]:<4}  level={p["level"]}')
+
 
 if __name__ == '__main__':
     main()

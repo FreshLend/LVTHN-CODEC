@@ -10,8 +10,8 @@ It uses a universal container (`.lvn`) that supports both **Audio** and **Images
 *   **Image codec:** Oklab color space + Block DCT + RLE + Zstandard.
 *   **Performance:** 
     *   Audio outperforms MP3 in size by **~15%** at the same perceived quality.
-    *   Images outperform PNG in size by **6 to 7 times** with visually indistinguishable quality.
-    *   High speed: Audio RTF < 0.02, 4K image decoding takes about 3 seconds.
+    *   Images outperform PNG in size by **8 to 9 times** with visually indistinguishable quality.
+    *   High speed: Audio RTF < 0.015, 4K image encoding takes ~1.2 seconds, decoding takes ~0.8 seconds.
 
 ## Installation
 
@@ -79,19 +79,25 @@ python benchmark.py --audio audio.wav --image image.png --image-profiles fast ma
 
 ## Benchmarks
 
-### Audio (179 sec track)
-| File | Profile | Bitrate | SNR | Enc RTF | Dec RTF | Compression |
-|---|---|---|---|---|---|---|
-| acoustic.wav | compact | 113 kbps | 27.5 dB | 0.022 | 0.009 | 13.5x |
-| acoustic.wav | master | 225 kbps | 40.8 dB | 0.020 | 0.010 | 6.8x |
+### Audio (acoustic.wav, 179 sec)
+| Profile | Bitrate | SNR | Enc RTF | Dec RTF | Compression |
+|---|---|---|---|---|---|
+| `compact` | 113 kbps | 27.5 dB | 0.013 | 0.009 | 13.5x |
+| `default` | 127 kbps | 29.4 dB | 0.012 | 0.009 | 12.1x |
+| `speech` | 155 kbps | 32.9 dB | 0.013 | 0.010 | 9.9x |
+| `detail` | 193 kbps | 37.3 dB | 0.013 | 0.010 | 8.0x |
+| `master` | 225 kbps | 40.8 dB | 0.014 | 0.010 | 6.8x |
+
+*(RTF < 0.015 means encoding is 60x faster than real time. Decoding is ~100x faster).*
 
 ### Images (4K 8.29 MP)
-| File | Profile | PSNR | Enc Time | Dec Time | Compression |
-|---|---|---|---|---|---|
-| 4k_image.png | fast | 42.1 dB | 4.10s | 3.14s | 7.1x |
-| 4k_image.png | max | 48.3 dB | 29.32s | 3.14s | 4.3x |
+| Profile | PSNR | Enc Time | Dec Time | Compression |
+|---|---|---|---|---|
+| `fast` | 42.1 dB | 1.15s | 1.03s | 9.8x |
+| `default` | 44.7 dB | 1.72s | 0.86s | 8.3x |
+| `max` | 48.3 dB | 8.33s | 0.99s | 4.7x |
 
-*(PSNR > 40 dB is considered visually indistinguishable from the original. RTF < 1.0 means faster than real time).*
+*(PSNR > 40 dB is visually indistinguishable from the original).*
 
 ## Architecture
 

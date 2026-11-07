@@ -10,9 +10,11 @@ MEDIA_VIDEO = 0x03
 HDR_FMT = '<5sHB'
 HDR_SIZE = struct.calcsize(HDR_FMT)
 
+
 def wrap(media_type, payload):
     header = struct.pack(HDR_FMT, MAGIC, VERSION, media_type)
     return header + payload
+
 
 def unwrap(data):
     if len(data) < HDR_SIZE:

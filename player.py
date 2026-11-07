@@ -12,36 +12,31 @@ from PySide6.QtGui import QImage, QPixmap, QPainter
 from lvthn import decode_lvn
 from lvthn.core import container
 
+
 class ImageViewer(QGraphicsView):
     def __init__(self, pixels):
         super().__init__()
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
-        
+
+        pixels = np.ascontiguousarray(pixels)
         h, w, c = pixels.shape
-        if c == 4:
-            fmt = QImage.Format_RGBA8888
-        else:
-            fmt = QImage.Format_RGB888
-            
-        bytes_per_line = c * w
-        img = QImage(pixels.data, w, h, bytes_per_line, fmt).copy()
+        fmt = QImage.Format_RGBA8888 if c == 4 else QImage.Format_RGB888
+        img = QImage(pixels.data, w, h, c * w, fmt).copy()
         pixmap = QPixmap.fromImage(img)
-        
+
         self.item = QGraphicsPixmapItem(pixmap)
         self.item.setTransformationMode(Qt.SmoothTransformation)
         self.scene.addItem(self.item)
-        
+
         self.setDragMode(QGraphicsView.ScrollHandDrag)
         self.setRenderHint(QPainter.Antialiasing)
         self.setRenderHint(QPainter.SmoothPixmapTransform)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorViewCenter)
         self.setBackgroundBrush(Qt.black)
-        
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        
         self.zoom_factor = 1.15
 
     def wheelEvent(self, event):
@@ -51,8 +46,7 @@ class ImageViewer(QGraphicsView):
             self.scale(1.0 / self.zoom_factor, 1.0 / self.zoom_factor)
 
     def fit_to_window(self):
-        rect = QRectF(self.item.pixmap().rect())
-        self.fitInView(rect, Qt.KeepAspectRatio)
+        self.fitInView(QRectF(self.item.pixmap().rect()), Qt.KeepAspectRatio)
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -62,28 +56,28 @@ class ImageViewer(QGraphicsView):
 class AudioPlayer(QWidget):
     def __init__(self, pcm, sr):
         super().__init__()
-        self.pcm = pcm
+        self.pcm = np.ascontiguousarray(pcm, dtype=np.float32)
         self.sr = sr
-        self.total_frames = len(pcm)
+        self.total_frames = len(self.pcm)
         self.current_frame = 0
         self.playing = False
-        
+
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(40, 40, 40, 40)
         self.layout.setSpacing(20)
-        
+
         self.time_label = QLabel("00:00 / 00:00")
         self.time_label.setAlignment(Qt.AlignCenter)
         self.time_label.setStyleSheet("font-size: 24px; font-family: Consolas, monospace; color: #ddd;")
         self.layout.addWidget(self.time_label)
-        
+
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setRange(0, self.total_frames)
         self.slider.sliderMoved.connect(self.on_seek)
         self.slider.sliderPressed.connect(self.on_slider_press)
         self.slider.sliderReleased.connect(self.on_slider_release)
         self.layout.addWidget(self.slider)
-        
+
         btn_layout = QHBoxLayout()
         self.btn_play = QPushButton("Play")
         self.btn_play.setFixedSize(150, 50)
@@ -93,17 +87,17 @@ class AudioPlayer(QWidget):
         btn_layout.addWidget(self.btn_play)
         btn_layout.addStretch()
         self.layout.addLayout(btn_layout)
-        
+
         self.is_seeking = False
-        
+
         self.stream = sd.OutputStream(
-            samplerate=self.sr, 
+            samplerate=self.sr,
             channels=self.pcm.shape[1],
-            callback=self._audio_callback, 
-            blocksize=2048
+            callback=self._audio_callback,
+            blocksize=2048,
         )
         self.stream.start()
-        
+
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_ui)
         self.timer.start(50)
@@ -131,31 +125,26 @@ class AudioPlayer(QWidget):
         if not self.playing:
             outdata.fill(0)
             return
-            
-        chunk = self.pcm[self.current_frame : self.current_frame + frames]
-        
+        chunk = self.pcm[self.current_frame:self.current_frame + frames]
         if len(chunk) == 0:
             self.playing = False
             outdata.fill(0)
             return
-            
         if len(chunk) < frames:
-            outdata[:len(chunk)] = chunk.astype(np.float32)
+            outdata[:len(chunk)] = chunk
             outdata[len(chunk):] = 0
             self.current_frame += len(chunk)
             self.playing = False
         else:
-            outdata[:] = chunk.astype(np.float32)
+            outdata[:] = chunk
             self.current_frame += frames
 
     def update_ui(self):
         if not self.is_seeking:
             self.slider.setValue(self.current_frame)
-            
         curr_sec = int(self.current_frame / self.sr)
         tot_sec = int(self.total_frames / self.sr)
-        self.time_label.setText(f"{curr_sec//60:02d}:{curr_sec%60:02d} / {tot_sec//60:02d}:{tot_sec%60:02d}")
-        
+        self.time_label.setText(f"{curr_sec // 60:02d}:{curr_sec % 60:02d} / {tot_sec // 60:02d}:{tot_sec % 60:02d}")
         if not self.playing and self.current_frame >= self.total_frames:
             self.btn_play.setText("Play")
 
@@ -171,7 +160,6 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(f"LVTHN Player - {path.name}")
         self.resize(1280, 720)
-        
         self.setStyleSheet("""
             QMainWindow { background-color: #222; }
             QSlider::groove:horizontal {
@@ -182,10 +170,10 @@ class MainWindow(QMainWindow):
             }
             QSlider::sub-page:horizontal { background: #0078D7; border-radius: 4px; }
         """)
-        
+
         data = path.read_bytes()
         media_type, _ = container.unwrap(data)
-        
+
         if media_type == container.MEDIA_AUDIO:
             pcm, sr, ch, n = decode_lvn(data)
             self.setCentralWidget(AudioPlayer(pcm, sr))
@@ -200,17 +188,15 @@ class MainWindow(QMainWindow):
 def main():
     if len(sys.argv) < 2:
         sys.exit('usage: player.py <file.lvn>')
-        
     path = Path(sys.argv[1])
     if not path.exists():
         sys.exit(f'File not found: {path}')
-
     print('Decoding...', flush=True)
-    
     app = QApplication(sys.argv)
     window = MainWindow(path)
     window.show()
     sys.exit(app.exec())
+
 
 if __name__ == '__main__':
     main()
