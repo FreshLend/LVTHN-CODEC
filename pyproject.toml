@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=77.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lvthn-codec"
+version = "1.0.0"
+description = "Universal LVTHN media codec: audio (MDCT + Bark + Psy) and images (Oklab + DCT + zstd)"
+readme = "README.EN.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE", "PATENTS"]
+authors = [
+    { name = "FreshGame" },
+]
+maintainers = [
+    { name = "FreshLend Studio" },
+]
+keywords = [
+    "audio", "codec", "image", "compression", "mdct", "dct",
+    "psychoacoustics", "oklab", "lvn", "patent-free",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio :: Codecs",
+    "Topic :: Multimedia :: Graphics :: Codecs",
+]
+dependencies = [
+    "numpy==2.2.6",
+    "scipy==1.15.3",
+    "numba==0.68.1",
+    "zstandard==0.25.0",
+    "Pillow==12.3.0",
+]
+
+[tool.setuptools]
+py-modules = ["codec"]
+
+[tool.setuptools.packages.find]
+include = ["core*"]
+exclude = ["player*", "converter*", "benchmark*"]
