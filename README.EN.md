@@ -1,4 +1,4 @@
-# LVTHN-CODEC [RU](README.md) | **EN**
+# LVTHN-CODEC [RU](https://github.com/FreshLend/LVTHN-CODEC/blob/main/README.md) | **EN**
 
 A modular, patent-clean, and highly efficient media codec written in Python. 
 It uses a universal container (`.lvn`) that supports both **Audio** and **Images**, applying modern psychoacoustic and psychovisual models to outperform industry standards like MP3 and PNG.
