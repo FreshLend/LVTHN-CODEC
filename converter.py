@@ -7,9 +7,9 @@ from pathlib import Path
 
 from lvthn import (
     PROFILES, IMG_PROFILES, decode_lvn, encode_pcm, read_wav, write_wav,
-    read_image, write_image
+    read_image, write_image, encode_image
 )
-from lvthn.core import container, image
+from lvthn.core import container
 
 AUDIO_EXTS = ('.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.opus', '.wma')
 IMAGE_EXTS = ('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.tiff', '.tif')
@@ -67,7 +67,7 @@ def to_lvn_image(src, dst, profile='default'):
     lvl = IMG_PROFILES.get(profile, IMG_PROFILES['default'])['level']
 
     pixels, ch = read_image(src)
-    payload = image.encode_image(pixels, pixels.shape[1], pixels.shape[0], ch, q, lvl)
+    payload = encode_image(pixels, pixels.shape[1], pixels.shape[0], ch, q, lvl)
     data = container.wrap(container.MEDIA_IMAGE, payload)
     Path(dst).write_bytes(data)
     print(f'OK [Image] {src} -> {dst}  {len(data)} bytes  (profile={profile})')

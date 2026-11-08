@@ -5,8 +5,8 @@ import argparse
 import numpy as np
 from PIL import Image
 
-from lvthn.core import container, audio, image
 import lvthn
+from lvthn.core import container, audio
 
 
 def _snr(ref, got):
@@ -35,7 +35,7 @@ def _bench_audio(path, profile_name):
     tsnr = lvthn.PROFILES[profile_name]['snr']
 
     t0 = time.time()
-    payload = audio.encode_audio(pcm, sr, pcm.shape[1], delta, tsnr)
+    payload = lvthn.encode_audio(pcm, sr, pcm.shape[1], delta, tsnr)
     data = container.wrap(container.MEDIA_AUDIO, payload)
     t_enc = time.time() - t0
 
@@ -84,7 +84,7 @@ def _bench_image(path, profile_name):
     lvl = lvthn.IMG_PROFILES[profile_name]['level']
 
     t0 = time.time()
-    payload = image.encode_image(pixels, w, h, ch, q, lvl)
+    payload = lvthn.encode_image(pixels, w, h, ch, q, lvl)
     data = container.wrap(container.MEDIA_IMAGE, payload)
     t_enc = time.time() - t0
 

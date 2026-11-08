@@ -242,7 +242,6 @@ def _encode_body_core(coeffs, ath_band, base_deltas, delta_floor_denom,
                 bd = base_deltas[b]
                 dmax = np.sqrt(m / target_snr_db) 
                 dfloor = bd / delta_floor_denom[b]
-                dfloor = bd / delta_floor_denom[b]
                 d = bd if bd < dmax else dmax
                 if dfloor > d:
                     d = dfloor
