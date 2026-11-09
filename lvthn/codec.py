@@ -20,6 +20,9 @@ IMG_PROFILES = {
     'max':     {'quality': 98, 'level': 19},
 }
 
+DEFAULT_DELTA = PROFILES['default']['delta']
+DEFAULT_TARGET_SNR_DB = PROFILES['default']['snr']
+
 def encode_pcm(pcm, sr, ch, delta, target_snr_db, mode='monolithic'):
     payload = audio.encode_audio(pcm, sr, ch, delta, target_snr_db, mode=mode)
     return container.wrap(container.MEDIA_AUDIO, payload)
@@ -78,22 +81,36 @@ def main():
     cmd, args = sys.argv[1], sys.argv[2:]
 
     if cmd == 'encode':
-        if len(args) < 2: sys.exit('usage: encode in.wav out.lvn [profile|delta] [target_snr_db] [mode]')
+        if len(args) < 2:
+            sys.exit('usage: encode in.wav out.lvn [profile|delta] [target_snr_db] [mode]')
         pcm, sr = read_wav(args[0])
-        arg2 = args[2] if len(args) > 2 else 'default'
-        if arg2 in PROFILES:
-            delta = PROFILES[arg2]['delta']
-            tsnr = PROFILES[arg2]['snr']
-            print(f'[audio profile: {arg2}] delta={delta} snr={tsnr}')
-        else:
-            delta = float(arg2)
-            tsnr = float(args[3]) if len(args) > 3 else 24.0
-        mode = args[4] if len(args) > 4 else 'monolithic'
+        
+        delta = DEFAULT_DELTA
+        tsnr = DEFAULT_TARGET_SNR_DB
+        mode = 'monolithic'
+        
+        for arg in args[2:]:
+            if arg in PROFILES:
+                delta = PROFILES[arg]['delta']
+                tsnr = PROFILES[arg]['snr']
+                print(f'[audio profile: {arg}] delta={delta} snr={tsnr}')
+            elif arg in ('monolithic', 'chunked'):
+                mode = arg
+            else:
+                try:
+                    val = float(arg)
+                    if val < 1.0:
+                        delta = val
+                    else:
+                        tsnr = val
+                except ValueError:
+                    sys.exit(f'Unknown argument: {arg}')
         
         t0 = time.time()
         data = encode_pcm(pcm, sr, pcm.shape[1], delta, target_snr_db=tsnr, mode=mode)
         Path(args[1]).write_bytes(data)
-        print(f'OK {args[1]} {len(data)} bytes ({pcm.size * 2 / len(data):.2f}x vs PCM) encode={time.time() - t0:.2f}s mode={mode}')
+        print(f'OK {args[1]}  {len(data)} bytes  ({pcm.size * 2 / len(data):.2f}x vs PCM)  '
+              f'encode={time.time() - t0:.2f}s  mode={mode}')
 
     elif cmd == 'decode':
         if len(args) < 2: sys.exit('usage: decode in.lvn out.wav')
