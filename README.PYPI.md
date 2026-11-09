@@ -19,32 +19,22 @@ import numpy as np
 import lvthn
 
 # --- Audio Example ---
-# 1. Read a WAV file
 pcm, sr = lvthn.read_wav("track.wav")
 
-# 2. Encode to LVN
-# Arguments: pcm_array, sample_rate, channels, delta, target_snr_db
-lvn_data = lvthn.encode_pcm(pcm, sr, pcm.shape[1], 0.18, 24.0)
+# Encode (mode can be 'monolithic' or 'chunked')
+lvn_data = lvthn.encode_pcm(pcm, sr, pcm.shape[1], 0.18, 24.0, mode='monolithic')
 
-# 3. Decode back to PCM
+# Decode
 out_pcm, out_sr, out_ch, n_samples = lvthn.decode_lvn(lvn_data)
-
-# 4. Write to WAV
 lvthn.write_wav("restored.wav", out_pcm, out_sr)
-
 
 # --- Image Example ---
 from PIL import Image
 from lvthn.core import container, image
 
-# 1. Read an image
 pixels = np.array(Image.open("image.png"))
-
-# 2. Encode to LVN (quality 92, zstd level 12)
 payload = image.encode_image(pixels, pixels.shape[1], pixels.shape[0], 3, 92, 12)
 lvn_data = container.wrap(container.MEDIA_IMAGE, payload)
-
-# 3. Decode back to pixels
 restored_pixels = image.decode_image(payload)
 ```
 
@@ -53,8 +43,8 @@ restored_pixels = image.decode_image(payload)
 The package includes a CLI tool accessible via the `lvthn` command.
 
 ```bash
-# Encode audio
-lvthn encode track.wav track.lvn compact
+# Encode audio (Chunked mode for streaming)
+lvthn encode track.wav track.lvn compact chunked
 
 # Decode audio
 lvthn decode track.lvn out.wav
@@ -71,19 +61,32 @@ lvthn info track.lvn
 
 ## Performance
 
-### Audio (acoustic track, 179 sec)
-| Profile | Bitrate | SNR | Enc RTF | Dec RTF |
-|---|---|---|---|---|
-| `compact` | 113 kbps | 27.5 dB | 0.013 | 0.009 |
-| `default` | 127 kbps | 29.4 dB | 0.012 | 0.009 |
-| `master` | 225 kbps | 40.8 dB | 0.014 | 0.010 |
+### Audio (average across music tracks)
+| Profile | Mode | Bitrate | SNR | Enc RTF | Dec RTF |
+|---|---|---|---|---|---|
+| `compact` | Monolithic | ~51 kbps | 23.2 dB | 0.010 | 0.010 |
+| `compact` | Chunked | ~55 kbps | 23.2 dB | 0.080 | 0.050 |
+| `default` | Monolithic | ~58 kbps | 24.9 dB | 0.009 | 0.009 |
+| `default` | Chunked | ~62 kbps | 24.9 dB | 0.077 | 0.048 |
+| `master` | Monolithic | ~114 kbps | 35.7 dB | 0.010 | 0.010 |
 
-### Images (4K 8.29 MP)
+### Audio (average across speech recordings)
+| Profile | Mode | Bitrate | SNR | Enc RTF | Dec RTF |
+|---|---|---|---|---|---|
+| `compact` | Monolithic | ~43 kbps | 30.6 dB | 0.004 | 0.003 |
+| `default` | Monolithic | ~49 kbps | 32.7 dB | 0.004 | 0.003 |
+| `master` | Monolithic | ~88 kbps | 45.9 dB | 0.004 | 0.004 |
+
+*(RTF < 0.015 means encoding is over 60x faster than real time. Chunked mode adds ~4 kbps overhead for streaming support).*
+
+### Images (average across real photographs)
 | Profile | PSNR | Enc Time | Dec Time | Compression |
 |---|---|---|---|---|
-| `fast` | 42.1 dB | 1.15s | 1.03s | 9.8x |
-| `default` | 44.7 dB | 1.72s | 0.86s | 8.3x |
-| `max` | 48.3 dB | 8.33s | 0.99s | 4.7x |
+| `fast` | 39.9 dB | 0.01s | 0.01s | 7.8x |
+| `default` | 42.9 dB | 0.02s | 0.01s | 5.6x |
+| `max` | 47.5 dB | 0.06s | 0.01s | 3.0x |
+
+*(PSNR > 40 dB is visually indistinguishable from the original. Larger compression ratios are achieved on simple images, lower on textured photographs).*
 
 ## Profiles
 
@@ -99,7 +102,7 @@ lvthn info track.lvn
 ### Image Profiles
 | Profile | Quality | Zstd Level | Best for |
 |---|---|---|---|
-| `fast` | 85 | 1 | Quick preview, game textures |
+| `fast` | 85 | 5 | Quick preview, game textures |
 | `default` | 92 | 12 | Web images, everyday use |
 | `max` | 98 | 19 | Archiving, professional photography |
 

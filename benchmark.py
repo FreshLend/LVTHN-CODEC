@@ -8,11 +8,9 @@ from PIL import Image
 import lvthn
 from lvthn.core import container, audio
 
-
 def _snr(ref, got):
     err = ref - got
     return 10 * np.log10(np.sum(ref ** 2) / max(np.sum(err ** 2), 1e-20))
-
 
 def _psnr(ref, got):
     mse = np.mean((ref.astype(np.float32) - got.astype(np.float32)) ** 2)
@@ -20,8 +18,7 @@ def _psnr(ref, got):
         return float('inf')
     return 10 * np.log10(255.0 ** 2 / mse)
 
-
-def _bench_audio(path, profile_name):
+def _bench_audio(path, profile_name, mode):
     try:
         pcm, sr = lvthn.read_wav(path)
     except Exception as e:
@@ -35,7 +32,7 @@ def _bench_audio(path, profile_name):
     tsnr = lvthn.PROFILES[profile_name]['snr']
 
     t0 = time.time()
-    payload = lvthn.encode_audio(pcm, sr, pcm.shape[1], delta, tsnr)
+    payload = lvthn.encode_audio(pcm, sr, pcm.shape[1], delta, tsnr, mode=mode)
     data = container.wrap(container.MEDIA_AUDIO, payload)
     t_enc = time.time() - t0
 
@@ -44,7 +41,14 @@ def _bench_audio(path, profile_name):
     t_dec = time.time() - t0
 
     hop = audio.HOP
-    snr = _snr(pcm[2 * hop:n2 - 2 * hop], out_pcm[2 * hop:n2 - 2 * hop])
+    min_len = min(len(pcm), len(out_pcm))
+    if min_len > 4 * hop:
+        ref = pcm[2 * hop : min_len - 2 * hop]
+        got = out_pcm[2 * hop : min_len - 2 * hop]
+        snr = _snr(ref, got) if len(ref) > 0 else 0.0
+    else:
+        snr = 0.0
+
     rtf_enc = t_enc / dur
     rtf_dec = t_dec / dur
     kbps = len(data) * 8 / dur / 1000
@@ -52,6 +56,7 @@ def _bench_audio(path, profile_name):
     return {
         'name': os.path.basename(path),
         'profile': profile_name,
+        'mode': mode,
         'dur': dur,
         'size': len(data),
         'ratio': raw_bytes / len(data),
@@ -62,7 +67,6 @@ def _bench_audio(path, profile_name):
         'rtf_enc': rtf_enc,
         'rtf_dec': rtf_dec,
     }
-
 
 def _bench_image(path, profile_name):
     try:
@@ -109,7 +113,6 @@ def _bench_image(path, profile_name):
         'mp_dec': mp / t_dec,
     }
 
-
 def _resolve_files(paths, extensions):
     files = []
     for p in paths:
@@ -126,7 +129,6 @@ def _resolve_files(paths, extensions):
             print(f"  [!] Path not found: {p}")
     return files
 
-
 def main():
     parser = argparse.ArgumentParser(description="LVTHN-CODEC Benchmark Tool")
     parser.add_argument('--audio', nargs='+', default=None, help='Audio files or folders (wav)')
@@ -134,6 +136,8 @@ def main():
 
     parser.add_argument('--audio-profiles', nargs='+', default=['default', 'compact'],
                         choices=list(lvthn.PROFILES.keys()), help='Audio profiles to test')
+    parser.add_argument('--audio-modes', nargs='+', default=['monolithic', 'chunked'],
+                        choices=['monolithic', 'chunked'], help='Audio encoding modes to test')
     parser.add_argument('--image-profiles', nargs='+', default=['fast', 'default', 'max'],
                         choices=list(lvthn.IMG_PROFILES.keys()), help='Image profiles to test')
 
@@ -143,9 +147,24 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    print("=" * 80)
+    print("Warming up Numba JIT...", flush=True)
+
+    for profile in lvthn.PROFILES:
+        p = lvthn.PROFILES[profile]
+        for mode in ('monolithic', 'chunked'):
+            _ = lvthn.encode_audio(np.zeros((44100, 2)), 44100, 2, p['delta'], p['snr'], mode=mode)
+
+    for profile in lvthn.IMG_PROFILES:
+        p = lvthn.IMG_PROFILES[profile]
+        for ch in (3, 4):
+            _tmp_img = np.zeros((64, 64, ch), dtype=np.uint8)
+            _tmp_payload = lvthn.encode_image(_tmp_img, 64, 64, ch, p['quality'], p['level'])
+            _tmp_data = container.wrap(container.MEDIA_IMAGE, _tmp_payload)
+            _ = lvthn.decode_lvn(_tmp_data)
+
+    print("=" * 90)
     print(" LVTHN-CODEC BENCHMARK")
-    print("=" * 80)
+    print("=" * 90)
 
     if args.audio:
         audio_files = _resolve_files(args.audio, ('.wav',))
@@ -153,14 +172,15 @@ def main():
             print("\n[ AUDIO ] No valid files found.")
         else:
             print("\n[ AUDIO ]")
-            print(f"{'File':<20} | {'Profile':<10} | {'Dur':<6} | {'kbps':<6} | {'SNR':<6} | {'Enc RTF':<8} | {'Dec RTF':<8} | {'Ratio'}")
-            print("-" * 95)
+            print(f"{'File':<20} | {'Profile':<10} | {'Mode':<10} | {'Dur':<6} | {'kbps':<6} | {'SNR':<6} | {'Enc RTF':<8} | {'Dec RTF':<8} | {'Ratio'}")
+            print("-" * 110)
 
             for f in audio_files:
                 for profile in args.audio_profiles:
-                    res = _bench_audio(f, profile)
-                    if res:
-                        print(f"{res['name']:<20} | {res['profile']:<10} | {res['dur']:>5.0f}s | {res['kbps']:>5.0f}k | {res['snr']:>5.1f}dB | {res['rtf_enc']:>8.3f} | {res['rtf_dec']:>8.3f} | {res['ratio']:.1f}x")
+                    for mode in args.audio_modes:
+                        res = _bench_audio(f, profile, mode)
+                        if res:
+                            print(f"{res['name'][:20]:<20} | {res['profile']:<10} | {res['mode']:<10} | {res['dur']:>5.0f}s | {res['kbps']:>5.0f}k | {res['snr']:>5.1f}dB | {res['rtf_enc']:>8.3f} | {res['rtf_dec']:>8.3f} | {res['ratio']:.1f}x")
 
     if args.image:
         image_files = _resolve_files(args.image, ('.png', '.jpg', '.jpeg'))
@@ -175,10 +195,9 @@ def main():
                 for profile in args.image_profiles:
                     res = _bench_image(f, profile)
                     if res:
-                        print(f"{res['name']:<20} | {res['profile']:<10} | {res['mp']:.2f} MP   | {res['psnr']:>5.1f}dB | {res['t_enc']:>5.2f}s | {res['t_dec']:>5.2f}s | {res['mp_enc']:>7.1f} MP/s | {res['ratio']:.1f}x")
+                        print(f"{res['name'][:20]:<20} | {res['profile']:<10} | {res['mp']:.2f} MP   | {res['psnr']:>5.1f}dB | {res['t_enc']:>5.2f}s | {res['t_dec']:>5.2f}s | {res['mp_enc']:>7.1f} MP/s | {res['ratio']:.1f}x")
 
     print("\nDone.")
-
 
 if __name__ == '__main__':
     main()

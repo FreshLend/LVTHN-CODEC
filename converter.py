@@ -14,7 +14,6 @@ from lvthn.core import container
 AUDIO_EXTS = ('.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.opus', '.wma')
 IMAGE_EXTS = ('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.tiff', '.tif')
 
-
 def _ffmpeg_ok():
     try:
         subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
@@ -22,30 +21,22 @@ def _ffmpeg_ok():
     except (FileNotFoundError, subprocess.CalledProcessError):
         return False
 
-
 def _to_wav(src, wav, sr=None, ch=None):
     cmd = ['ffmpeg', '-y', '-loglevel', 'error', '-i', src]
-    if sr:
-        cmd += ['-ar', str(sr)]
-    if ch:
-        cmd += ['-ac', str(ch)]
+    if sr: cmd += ['-ar', str(sr)]
+    if ch: cmd += ['-ac', str(ch)]
     cmd += [wav]
     subprocess.run(cmd, check=True)
 
-
 def _from_wav(wav, dst, sr=None, ch=None, bitrate=None):
     cmd = ['ffmpeg', '-y', '-loglevel', 'error', '-i', wav]
-    if sr:
-        cmd += ['-ar', str(sr)]
-    if ch:
-        cmd += ['-ac', str(ch)]
-    if bitrate:
-        cmd += ['-b:a', bitrate]
+    if sr: cmd += ['-ar', str(sr)]
+    if ch: cmd += ['-ac', str(ch)]
+    if bitrate: cmd += ['-b:a', bitrate]
     cmd += [dst]
     subprocess.run(cmd, check=True)
 
-
-def to_lvn_audio(src, dst, profile='default', sr=None, ch=None):
+def to_lvn_audio(src, dst, profile='default', sr=None, ch=None, mode='monolithic'):
     delta = PROFILES.get(profile, PROFILES['default'])['delta']
     tsnr = PROFILES.get(profile, PROFILES['default'])['snr']
 
@@ -54,13 +45,12 @@ def to_lvn_audio(src, dst, profile='default', sr=None, ch=None):
     try:
         _to_wav(src, tmp, sr, ch)
         pcm, sr2 = read_wav(tmp)
-        data = encode_pcm(pcm, sr2, pcm.shape[1], delta, tsnr)
+        data = encode_pcm(pcm, sr2, pcm.shape[1], delta, tsnr, mode=mode)
         Path(dst).write_bytes(data)
-        print(f'OK [Audio] {src} -> {dst}  {len(data)} bytes  (profile={profile})')
+        print(f'OK [Audio] {src} -> {dst}  {len(data)} bytes  (profile={profile}, mode={mode})')
     finally:
         if os.path.exists(tmp):
             os.unlink(tmp)
-
 
 def to_lvn_image(src, dst, profile='default'):
     q = IMG_PROFILES.get(profile, IMG_PROFILES['default'])['quality']
@@ -71,7 +61,6 @@ def to_lvn_image(src, dst, profile='default'):
     data = container.wrap(container.MEDIA_IMAGE, payload)
     Path(dst).write_bytes(data)
     print(f'OK [Image] {src} -> {dst}  {len(data)} bytes  (profile={profile})')
-
 
 def from_lvn(src, dst, sr=None, ch=None, bitrate=None):
     data = Path(src).read_bytes()
@@ -94,7 +83,6 @@ def from_lvn(src, dst, sr=None, ch=None, bitrate=None):
         write_image(dst, pixels, pixels.shape[2] if len(pixels.shape) > 2 else 1)
         print(f'OK [Image] {src} -> {dst}')
 
-
 def main():
     p = argparse.ArgumentParser(description="LVTHN Converter (Audio & Image)")
     sub = p.add_subparsers(dest='cmd', required=True)
@@ -103,6 +91,7 @@ def main():
     st.add_argument('input')
     st.add_argument('output')
     st.add_argument('--profile', default='default')
+    st.add_argument('--mode', default='monolithic', choices=['monolithic', 'chunked'], help='Audio encoding mode')
     st.add_argument('--rate', type=int, default=None, help='Audio sample rate')
     st.add_argument('--channels', type=int, default=None, help='Audio channels')
 
@@ -120,7 +109,7 @@ def main():
         if ext in AUDIO_EXTS:
             if not _ffmpeg_ok():
                 sys.exit('ffmpeg not found in PATH (required for audio)')
-            to_lvn_audio(a.input, a.output, a.profile, a.rate, a.channels)
+            to_lvn_audio(a.input, a.output, a.profile, a.rate, a.channels, a.mode)
         elif ext in IMAGE_EXTS:
             to_lvn_image(a.input, a.output, a.profile)
         else:
@@ -138,7 +127,6 @@ def main():
             from_lvn(a.input, a.output)
         else:
             sys.exit('Unknown media type')
-
 
 if __name__ == '__main__':
     main()

@@ -30,7 +30,6 @@ for _k in range(8):
     for _n in range(8):
         _C_8X8[_k, _n] = _a * np.cos(np.pi * (2 * _n + 1) * _k / 16.0)
 
-
 @njit(cache=True, fastmath=True, boundscheck=False, nogil=True, parallel=True)
 def _rgb_to_oklab_njit(rgb, out):
     h, w = rgb.shape[0], rgb.shape[1]
@@ -63,7 +62,6 @@ def _rgb_to_oklab_njit(rgb, out):
             out[i, j, 0] = L * 255.0
             out[i, j, 1] = a * 255.0 + 128.0
             out[i, j, 2] = bb * 255.0 + 128.0
-
 
 @njit(cache=True, fastmath=True, boundscheck=False, nogil=True, parallel=True)
 def _oklab_to_rgb_njit(oklab, out):
@@ -101,7 +99,6 @@ def _oklab_to_rgb_njit(oklab, out):
             out[i, j, 1] = int(g * 255.0 + 0.5)
             out[i, j, 2] = int(bb * 255.0 + 0.5)
 
-
 @njit(cache=True, boundscheck=False, nogil=True)
 def _rle_encode_all_fast(zigzag_blocks, out_pairs_1d):
     n_blocks = zigzag_blocks.shape[0]
@@ -128,7 +125,6 @@ def _rle_encode_all_fast(zigzag_blocks, out_pairs_1d):
             out_pos += 2
     return out_pos // 2
 
-
 @njit(cache=True, boundscheck=False, nogil=True)
 def _rle_decode_all_fast(pairs_1d, n_pairs, n_blocks, out_zigzag):
     idx = 0
@@ -147,7 +143,6 @@ def _rle_decode_all_fast(pairs_1d, n_pairs, n_blocks, out_zigzag):
                 out_zigzag[b, pos] = val
                 pos += 1
     return idx
-
 
 @njit(cache=True, fastmath=True, boundscheck=False, nogil=True)
 def _dct_quant_zigzag_njit(channel, C, q_matrix, zigzag_order, zigzag_out):
@@ -188,7 +183,6 @@ def _dct_quant_zigzag_njit(channel, C, q_matrix, zigzag_order, zigzag_out):
             j = pos % 8
             zigzag_out[bi, k] = int(np.rint(dct[i, j] / q_matrix[i, j]))
 
-
 @njit(cache=True, fastmath=True, boundscheck=False, nogil=True)
 def _dezigzag_idct_njit(zigzag_blocks, q_matrix, C, zigzag_order, out):
     h, w = out.shape
@@ -224,7 +218,6 @@ def _dezigzag_idct_njit(zigzag_blocks, q_matrix, C, zigzag_order, out):
                     s += tmp[i, k] * C[k, j]
                 out[ii, jj] = s
 
-
 @njit(cache=True, boundscheck=False, nogil=True)
 def _pack_int16_njit(pairs_1d, n_pairs, out):
     for i in range(n_pairs):
@@ -233,7 +226,6 @@ def _pack_int16_njit(pairs_1d, n_pairs, out):
         out[i * 3] = run & 0xFF
         out[i * 3 + 1] = val & 0xFF
         out[i * 3 + 2] = (val >> 8) & 0xFF
-
 
 @njit(cache=True, boundscheck=False, nogil=True)
 def _unpack_int16_njit(packed, n_pairs, out_pairs):
@@ -247,14 +239,20 @@ def _unpack_int16_njit(packed, n_pairs, out_pairs):
         out_pairs[i * 2] = run
         out_pairs[i * 2 + 1] = val
 
-
-def _get_q_matrix(quality, is_chroma):
+def _get_q_matrix(quality, is_chroma, is_alpha=False):
     q = np.clip(quality, 1, 100)
     step = (100 - q) / 2.0 + 1.0
     if is_chroma:
         step *= 1.5
+    if is_alpha:
+        base = np.ones((8, 8), dtype=np.float32)
+        for i in range(8):
+            for j in range(8):
+                freq = i + j
+                weight = 1.0 + max(0, freq - 2) * 0.6
+                base[i, j] = weight
+        return base * step * 1.5
     return np.ones((8, 8), dtype=np.float32) * step
-
 
 def _encode_channel_fast(channel, q_matrix):
     h, w = channel.shape
@@ -268,7 +266,6 @@ def _encode_channel_fast(channel, q_matrix):
     packed = np.empty(n_pairs * 3, dtype=np.uint8)
     _pack_int16_njit(out_pairs, n_pairs, packed)
     return packed.tobytes()
-
 
 def _decode_channel_fast(packed_bytes, q_matrix, h, w, use_int16):
     if use_int16:
@@ -288,7 +285,6 @@ def _decode_channel_fast(packed_bytes, q_matrix, h, w, use_int16):
     _dezigzag_idct_njit(zigzag, q_matrix, _C_8X8, ZIGZAG_ORDER, out)
     return out
 
-
 def encode_image(pixels, width, height, channels=3, quality=90, level=19):
     has_alpha = (channels == 4)
     flags = FLAG_INT16_RLE | (FLAG_ALPHA if has_alpha else 0)
@@ -302,9 +298,9 @@ def encode_image(pixels, width, height, channels=3, quality=90, level=19):
     oklab = np.zeros((height, width, 3), dtype=np.float32)
     _rgb_to_oklab_njit(rgb_pixels, oklab)
 
-    q_luma = _get_q_matrix(quality, is_chroma=False)
-    q_chroma = _get_q_matrix(quality, is_chroma=True)
-    q_alpha = _get_q_matrix(quality, is_chroma=False)
+    q_luma = _get_q_matrix(quality, is_chroma=False, is_alpha=False)
+    q_chroma = _get_q_matrix(quality, is_chroma=True, is_alpha=False)
+    q_alpha = _get_q_matrix(quality, is_chroma=False, is_alpha=True)
 
     channels_data = [
         (np.ascontiguousarray(oklab[:, :, 0]), q_luma),
@@ -332,7 +328,6 @@ def encode_image(pixels, width, height, channels=3, quality=90, level=19):
     body = b''.join(compressed_channels)
     return header + meta + body
 
-
 def decode_image(payload):
     if len(payload) < IMG_HDR_SIZE:
         raise ValueError("Image payload too small")
@@ -350,9 +345,9 @@ def decode_image(payload):
         compressed_channels.append(payload[pos:pos + l])
         pos += l
 
-    q_luma = _get_q_matrix(quality, is_chroma=False)
-    q_chroma = _get_q_matrix(quality, is_chroma=True)
-    q_alpha = _get_q_matrix(quality, is_chroma=False)
+    q_luma = _get_q_matrix(quality, is_chroma=False, is_alpha=False)
+    q_chroma = _get_q_matrix(quality, is_chroma=True, is_alpha=False)
+    q_alpha = _get_q_matrix(quality, is_chroma=False, is_alpha=True)
 
     q_matrices = [q_luma, q_chroma, q_chroma]
     if has_alpha:
@@ -386,7 +381,6 @@ def decode_image(payload):
         return np.dstack((rgb, alpha))
 
     return rgb
-
 
 def get_image_info(payload):
     width, height, channels, flags, quality = struct.unpack_from(IMG_HDR_FMT, payload, 0)
